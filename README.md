@@ -1,3 +1,3 @@
-# Germ bot
+# Supremacy AI
 
-Template bot for the [Cholerama](https://github.com/nvaytet/cholerama) game
+Template AI bot for the [Supremacy](https://github.com/nvaytet/supremacy) game

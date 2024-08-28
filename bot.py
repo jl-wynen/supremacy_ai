@@ -1,87 +1,82 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-from typing import Optional, Tuple
-
 import numpy as np
 
-from cholerama import Positions, helpers
+from supremacy import helpers
 
-AUTHOR = "YeastieBoys"  # This is your team name
-SEED = None  # Set this to a value to make runs reproducible
+# This is your team name
+CREATOR = "SimpleAI"
 
 
-class Bot:
+def tank_ai(tank, info, game_map):
     """
-    This is the bot that will be instantiated for the competition.
+    Function to control tanks.
+    """
+    if not tank.stopped:
+        if tank.stuck:
+            tank.set_heading(np.random.random() * 360.0)
+        elif "target" in info:
+            tank.goto(*info["target"])
 
-    The pattern can be either a numpy array or a path to an image (white means 0,
-    black means 1).
+
+def ship_ai(ship, info, game_map):
+    """
+    Function to control ships.
+    """
+    if not ship.stopped:
+        if ship.stuck:
+            if ship.get_distance(ship.owner.x, ship.owner.y) > 20:
+                ship.convert_to_base()
+            else:
+                ship.set_heading(np.random.random() * 360.0)
+
+
+def jet_ai(jet, info, game_map):
+    """
+    Function to control jets.
+    """
+    if "target" in info:
+        jet.goto(*info["target"])
+
+
+class PlayerAi:
+    """
+    This is the AI bot that will be instantiated for the competition.
     """
 
-    def __init__(
-        self,
-        number: int,
-        name: str,
-        patch_location: Tuple[int, int],
-        patch_size: Tuple[int, int],
-    ):
-        """
-        Parameters:
-        ----------
-        number: int
-            The player number. Numbers on the board equal to this value mark your cells.
-        name: str
-            The player's name
-        patch_location: tuple
-            The i, j row and column indices of the patch in the grid
-        patch_size: tuple
-            The size of the patch
-        """
-        self.number = number  # Mandatory: this is your number on the board
-        self.name = name  # Mandatory: player name
-        self.color = None  # Optional
-        self.patch_location = patch_location
-        self.patch_size = patch_size
-
-        self.rng = np.random.default_rng(SEED)
-
-        # If we make the pattern too sparse, it just dies quickly
-        xy = self.rng.integers(0, 12, size=(2, 100))
-        self.pattern = Positions(
-            x=xy[1] + patch_size[1] // 2, y=xy[0] + patch_size[0] // 2
+    def __init__(self):
+        self.team = CREATOR  # Mandatory attribute
+        self.build_queue = helpers.BuildQueue(
+            ["mine", "tank", "ship", "jet"], cycle=True
         )
-        # The pattern can also be just an image (0=white, 1=black)
-        # self.pattern = "mypattern.png"
 
-    def iterate(
-        self, iteration: int, board: np.ndarray, patch: np.ndarray, tokens: int
-    ) -> Optional[Positions]:
+    def run(self, t: float, dt: float, info: dict, game_map: np.ndarray):
         """
-        This method will be called by the game engine on each iteration.
-
-        Parameters:
-        ----------
-        iteration : int
-            The current iteration number.
-        board : numpy array
-            The current state of the entire board.
-        patch : numpy array
-            The current state of the player's own patch on the board.
-        tokens : list
-            The list of tokens on the board.
-
-        Returns:
-        -------
-        An object containing the x and y coordinates of the new cells.
+        This is the main function that will be called by the game engine.
         """
-        if tokens >= 5:
-            # Pick a random empty region of size 3x3 inside my patch
-            empty_regions = helpers.find_empty_regions(patch, (3, 3))
-            nregions = len(empty_regions)
-            if nregions == 0:
-                return None
-            # Make a glider
-            ind = self.rng.integers(0, nregions)
-            x = np.array([1, 2, 0, 1, 2]) + empty_regions[ind, 1]
-            y = np.array([2, 1, 0, 0, 0]) + empty_regions[ind, 0]
-            return Positions(x=x, y=y)
+
+        # Get information about my team
+        myinfo = info[self.team]
+
+        # Iterate through all my bases and process build queue
+        for base in myinfo["bases"]:
+            # Calling the build_queue will return the object that was built by the base.
+            # It will return None if the base did not have enough resources to build.
+            obj = self.build_queue(base)
+
+        # Try to find an enemy target
+        # If there are multiple teams in the info, find the first team that is not mine
+        if len(info) > 1:
+            for name in info:
+                if name != self.team:
+                    # Target only bases
+                    if "bases" in info[name]:
+                        # Simply target the first base
+                        t = info[name]["bases"][0]
+                        myinfo["target"] = [t.x, t.y]
+                        break
+
+        # Control all my vehicles
+        helpers.control_vehicles(
+            info=myinfo, game_map=game_map, tank=tank_ai, ship=ship_ai, jet=jet_ai
+        )

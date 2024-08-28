@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-from .bot import AUTHOR, Bot
+from .bot import CREATOR, PlayerAi
 
-__all__ = ["Bot", "AUTHOR"]
+__all__ = ["CREATOR", "PlayerAi"]

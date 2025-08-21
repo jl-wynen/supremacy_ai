@@ -8,8 +8,8 @@ class PlayerAi:
     This is the AI bot that will be instantiated for the competition.
     """
 
-    def __init__(self, team):
-        self.team = team
+    def __init__(self, name):
+        self.team = name
         self.ntanks = {}
         self.nships = {}
 
